@@ -1,0 +1,56 @@
+{
+  "name": "disposition-desk",
+  "version": "0.1.0",
+  "description": "Temperature-excursion disposition agent for pharma cold chain, built on a structured Sanity content model and Sanity Context MCP.",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iaj6/disposition-desk"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3050",
+    "build": "next build",
+    "start": "next start -p 3050",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "seed": "tsx scripts/export-ndjson.ts && sanity dataset import content/ilmenau.ndjson production --replace && sanity schema deploy",
+    "seed:token": "tsx scripts/seed.ts",
+    "ask": "tsx scripts/ask.ts",
+    "mcp:tools": "tsx scripts/mcp-tools.ts",
+    "check": "tsx scripts/check.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.58",
+    "@ai-sdk/google-vertex": "^5.0.88",
+    "@ai-sdk/mcp": "^2.0.54",
+    "@ai-sdk/react": "^4.0.110",
+    "@sanity/client": "^8.6.2",
+    "@sanity/image-url": "^2.1.1",
+    "@sanity/vision": "^5.31.2",
+    "ai": "^7.0.107",
+    "dotenv": "^18.0.1",
+    "groq-js": "^2.0.0",
+    "next": "^16.3.5",
+    "next-sanity": "^13.3.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "sanity": "^5.31.2",
+    "styled-components": "^6.5.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

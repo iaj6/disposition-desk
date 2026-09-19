@@ -1,0 +1,13 @@
+*[_type in ["controlledDocument","product","stabilityProfile","packout","packoutQualification","carrier","lane","deviation","shipment"]]{
+  ...,
+  "readings": null,
+  _type == "controlledDocument" => { "supersedes": supersedes->{docId, version, status} },
+  _type == "product" => { "currentStabilityProfile": currentStabilityProfile->{version, status, effectiveDate, labelMinC, labelMaxC, excursionMaxC, torBudgetHours, mktLimitC, studyRef, "sourceDocument": sourceDocument->{docId, version, status}} },
+  _type == "stabilityProfile" => { "product": product->{code, name}, "supersedes": supersedes->{version, status}, "sourceDocument": sourceDocument->{docId, version, status} },
+  _type == "packout" => { "currentQualification": currentQualification->{reportId, status, validUntil, holdHoursSummer, holdHoursWinter, minPayloadFillPct}, "packingInstruction": packingInstruction->{docId, version} },
+  _type == "packoutQualification" => { "packout": packout->{code, name}, "sourceDocument": sourceDocument->{docId, version, status} },
+  _type == "carrier" => { "termsDocument": termsDocument->{docId, version, status} },
+  _type == "lane" => { "carrier": carrier->{name, maxTarmacHours}, "approvedPackouts": approvedPackouts[]->{code, name}, "riskAssessment": riskAssessment->{docId, version, status, effectiveDate} },
+  _type == "deviation" => { "lane": lane->{code}, "product": product->{code, name}, "shipment": shipment->{shipmentId} },
+  _type == "shipment" => { "product": product->{code, name}, "lane": lane->{code}, "packout": packout->{code, name} }
+}

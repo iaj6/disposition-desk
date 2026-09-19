@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+.sanity
+content/ilmenau.ndjson
+dist
+.DS_Store
+*.log
+.vercel
