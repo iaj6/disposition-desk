@@ -1,6 +1,6 @@
 # Disposition Desk
 
-![Contradictions found, rendered as claim A / claim B / which governs](docs/contradictions.jpg)
+![Walkthrough: pick a shipment, the desk computes the numbers, reads the Knowledge Base, and drafts the memo with every contradiction cited](docs/demo.gif)
 
 A temperature-excursion disposition agent for a hypothetical pharma sponsor, **Ilmenau Therapeutics GmbH**, built for the [Sanity Challenge](https://dev.to/challenges/sanity) (Path One: an agent that queries real content through Sanity Context MCP).
 

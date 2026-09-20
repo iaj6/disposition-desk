@@ -19,7 +19,9 @@ What a person does with it: pick a shipment from the work queue, read the memo, 
 
 ## Demo
 
-<!-- video -->
+![Walkthrough of SHP-26-0874: the trace, the tool calls into Sanity Context and the Knowledge Base, and the memo with its contradictions cited](https://raw.githubusercontent.com/iaj6/disposition-desk/main/docs/demo.gif)
+
+<!-- optionally replace with a narrated video -->
 
 Try SHP-26-0911 for the version conflict (same trace: reject under the superseded profile, release under the effective one), or SHP-26-0874 for a lane that keeps failing (numbers pass, still escalated).
 
