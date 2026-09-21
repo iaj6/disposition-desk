@@ -36,7 +36,10 @@ export async function sanityContextTools(): Promise<{ tools: ToolSet; close: () 
   };
   await tryAttach(process.env.SANITY_CONTEXT_MCP_URL, "sanity_", "GROQ-mode");
   await tryAttach(process.env.SANITY_CONTEXT_KB_MCP_URL, "kb_", "Knowledge Base");
-  if (Object.keys(tools).length === 0) throw new Error("No Sanity Context tools available from either endpoint");
+  if (Object.keys(tools).length === 0) {
+    await Promise.all(clients.map((c) => c.close()));
+    throw new Error("Sanity Context is configured but neither endpoint served any tools; check SANITY_CONTEXT_TOKEN and the endpoint URLs.");
+  }
 
   return { tools, close: async () => { await Promise.all(clients.map((c) => c.close())); } };
 }

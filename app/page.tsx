@@ -53,8 +53,8 @@ function TraceChart({ o }: { o: AssessOutput }) {
           <text className="axis" x={L - 6} y={y(v) + 3.5} textAnchor="end">{v}°</text>
         </g>
       ))}
-      {ticks.map((t) => (
-        <text key={t.label} className="axis" x={t.x} y={H - 8} textAnchor={t.x === L ? "start" : t.x >= W - R - 1 ? "end" : "middle"}>{t.label}</text>
+      {ticks.map((t, i) => (
+        <text key={i} className="axis" x={t.x} y={H - 8} textAnchor={t.x === L ? "start" : t.x >= W - R - 1 ? "end" : "middle"}>{t.label}</text>
       ))}
       {!showCeiling && <text className="axis" x={W - R} y={T + 9} textAnchor="end">ceiling {a.hardLimitC}° above chart</text>}
       <path className="line" d={path} vectorEffect="non-scaling-stroke" />
@@ -139,7 +139,7 @@ function Memo({ text }: { text: string }) {
 }
 
 export default function Page() {
-  const { messages, sendMessage, status } = useChat({ transport: new DefaultChatTransport({ api: "/api/chat" }) });
+  const { messages, sendMessage, status, error } = useChat({ transport: new DefaultChatTransport({ api: "/api/chat" }) });
   const [input, setInput] = useState("");
   const [ships, setShips] = useState<ShipmentRow[]>([]);
   const [source, setSource] = useState<string>("");
@@ -199,6 +199,7 @@ export default function Page() {
               </div>
             ))}
             {busy && <div className="working">Working through the content…</div>}
+            {error && <div className="problem">{error.message || "The desk could not complete that request."}</div>}
           </div>
         </div>
         <div className="compose">

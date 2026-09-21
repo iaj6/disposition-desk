@@ -115,15 +115,17 @@ export function mkt(readings: Reading[], deltaHkJ = DEFAULT_HEAT_OF_ACTIVATION_K
   return dH / R / -Math.log(weighted / total) - KELVIN;
 }
 
-function segments(rs: Reading[], minC: number, maxC: number) {
+function segments(rs: Reading[], minC: number, maxC: number, weights: number[]) {
   const segs: ExcursionSegment[] = [];
   let above = 0;
   let below = 0;
   let cur: ExcursionSegment | null = null;
-  const flush = (endIdx: number) => {
+  const flush = (endIdx: number, trailing = false) => {
     if (!cur) return;
     cur.end = rs[endIdx].at;
     cur.hours = (ms(cur.end) - ms(cur.start)) / 3_600_000;
+    // A trace that ends still out of range: credit the final reading its interval, as MKT does.
+    if (trailing) cur.hours += weights[endIdx];
     if (cur.direction === "high") above += cur.hours;
     else below += cur.hours;
     segs.push(cur);
@@ -139,22 +141,24 @@ function segments(rs: Reading[], minC: number, maxC: number) {
     if (!cur) cur = { direction: dir, start: r.at, end: r.at, hours: 0, peakC: r.tempC };
     if ((dir === "high" && r.tempC > cur.peakC) || (dir === "low" && r.tempC < cur.peakC)) cur.peakC = r.tempC;
   });
-  if (cur) flush(rs.length - 1);
+  if (cur) flush(rs.length - 1, true);
   return { segs, above, below };
 }
 
 /**
  * Rules-based FIRST-PASS recommendation, never a final decision. Order matters:
- * hard stops, then the USP <1079.2> repeat-offender gate (which explicitly overrides
- * an otherwise-passing MKT), then budget, then MKT, then the benign case.
+ * no data, hard ceiling, budget (the product itself is in question), then the USP <1079.2>
+ * repeat-offender gate (which overrides an otherwise-passing MKT), then MKT, then the benign case.
  */
 function provisional(a: Omit<Assessment, "disposition" | "dispositionRationale">): [Disposition, string] {
+  if (a.readingCount === 0)
+    return ["INVESTIGATE", "No logger readings are available for this shipment; nothing can be assessed. Recommend hold pending the trace."];
   if (a.hardLimitHit)
     return ["REJECT", "Temperature exceeded the stability-supported maximum; MKT is not applicable. Recommend quarantine and destruction."];
+  if (a.budgetExceeded)
+    return ["REJECT/INVESTIGATE", `Cumulative time-out-of-storage exceeds the product's stability budget. Recommend quarantine pending full stability review.${a.repeatOffender ? ` This lane/product also has ${a.priorExcursionCount} prior excursion(s); raise a CAPA on the lane.` : ""}`];
   if (a.repeatOffender)
     return ["ESCALATE", `This lane/product has ${a.priorExcursionCount} prior excursion(s). Per USP <1079.2> MKT may not be used to justify release of a system not in a state of control. Recommend deviation + CAPA.`];
-  if (a.budgetExceeded)
-    return ["REJECT/INVESTIGATE", "Cumulative time-out-of-storage exceeds the product's stability budget. Recommend quarantine pending full stability review."];
   if (a.mktExceeded)
     return ["INVESTIGATE", "MKT over the assessed window exceeds the product's limit. Recommend quarantine pending review."];
   return ["RELEASE (provisional)", "Within stability budget and MKT limit. Still requires QA review and e-signature before disposition."];
@@ -211,7 +215,7 @@ export function assess(readingsIn: Reading[], budget: StabilityBudget, priorExcu
   });
   if (total > 0) base.meanC = weightedTemp / total;
 
-  const { segs, above, below } = segments(rs, budget.labelMinC, budget.labelMaxC);
+  const { segs, above, below } = segments(rs, budget.labelMinC, budget.labelMaxC, w);
   base.segments = segs;
   base.hoursAboveMax = above;
   base.hoursBelowMin = below;

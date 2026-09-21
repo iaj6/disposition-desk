@@ -51,6 +51,7 @@ button, input { font: inherit; color: inherit; }
 .empty h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
 .empty p { color: var(--ink-2); margin: 0 0 8px; font-size: 14.5px; }
 .working { color: var(--ink-2); font-size: 13px; padding: 4px 0 20px; }
+.problem { border-left: 3px solid var(--reject); background: #fbeeed; color: var(--ink); padding: 10px 12px; border-radius: 0 6px 6px 0; font-size: 13.5px; margin: 0 0 20px; white-space: pre-wrap; }
 
 /* ---------- assessment ---------- */
 .assess { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; margin: 0 0 14px; overflow: hidden; }

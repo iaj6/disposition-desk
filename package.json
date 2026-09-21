@@ -9,7 +9,7 @@
     "url": "https://github.com/iaj6/disposition-desk"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "type": "module",
   "scripts": {

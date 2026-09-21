@@ -19,6 +19,7 @@ const body = (file: string) => readFileSync(join(DOCS_DIR, file), "utf8");
 
 export type SeedDoc = { _id: string; _type: string; [k: string]: unknown };
 const ref = (id: string) => ({ _type: "reference", _ref: id });
+const refItem = (id: string) => ({ _key: id.replace(/[^A-Za-z0-9]/g, ""), ...ref(id) });
 
 /* ---------- deterministic logger traces ---------- */
 function lcg(seed: number) {
@@ -34,7 +35,7 @@ function trace(startIso: string, legs: Leg[], seed: number, stepMin = 30): Readi
     const n = Math.max(1, Math.round((leg.hours * 60) / stepMin));
     for (let i = 0; i < n; i++) {
       const j = (rnd() - 0.5) * 2 * (leg.jitter ?? 0.3);
-      out.push({ at: new Date(t).toISOString(), tempC: Math.round((leg.tempC + j) * 10) / 10 });
+      out.push({ _key: `r${out.length}`, at: new Date(t).toISOString(), tempC: Math.round((leg.tempC + j) * 10) / 10 } as Reading & { _key: string });
       t += stepMin * 60_000;
     }
   }
@@ -74,7 +75,7 @@ const docMeta: DocMeta[] = [
   { id: "REG-DIG-EUGDP", file: "REG-DIG-EUGDP.md", title: "Regulatory Digest: EU GDP 2013/C 343/01 Chapter 9 Transportation", docType: "regulatory-digest", version: "v1", status: "effective", effectiveDate: "2024-06-01", owner: "Regulatory Affairs", summary: "Excursions must be investigated under a procedure; passive containers qualified to actual route conditions." },
 ];
 const docs: SeedDoc[] = docMeta.map((d) => ({
-  _id: `doc.${d.id}`,
+  _id: `doc-${d.id}`,
   _type: "controlledDocument",
   docId: d.id.replace(/-v\d+$/, ""),
   title: d.title,
@@ -82,7 +83,7 @@ const docs: SeedDoc[] = docMeta.map((d) => ({
   version: d.version,
   status: d.status,
   effectiveDate: d.effectiveDate,
-  supersedes: d.supersedes ? ref(`doc.${d.supersedes}`) : undefined,
+  supersedes: d.supersedes ? ref(`doc-${d.supersedes}`) : undefined,
   owner: d.owner,
   summary: d.summary,
   body: body(d.file),
@@ -90,72 +91,72 @@ const docs: SeedDoc[] = docMeta.map((d) => ({
 
 /* ---------- entities ---------- */
 const products: SeedDoc[] = [
-  { _id: "product.ilm-201", _type: "product", code: "ILM-201", name: "Kestrelin", inn: "kestrelimab 150 mg/mL", dosageForm: "solution for injection, pre-filled syringe", labelStorage: "Store at 2–8 °C. Do not freeze. Protect from light.", currentStabilityProfile: ref("stb.201.v3") },
-  { _id: "product.ilm-330", _type: "product", code: "ILM-330", name: "Vantrexa", inn: "mRNA-LNP suspension, 10-dose vial", dosageForm: "suspension for injection", labelStorage: "Frozen −25 to −15 °C. Thawed: 2–8 °C up to 30 days. Do not refreeze.", currentStabilityProfile: ref("stb.330.v1") },
-  { _id: "product.ilm-118", _type: "product", code: "ILM-118", name: "Orvane", inn: "orvanertinib 40 mg", dosageForm: "film-coated tablet, HDPE bottle", labelStorage: "Store at 15–25 °C.", currentStabilityProfile: ref("stb.118.v2") },
+  { _id: "product-ilm-201", _type: "product", code: "ILM-201", name: "Kestrelin", inn: "kestrelimab 150 mg/mL", dosageForm: "solution for injection, pre-filled syringe", labelStorage: "Store at 2–8 °C. Do not freeze. Protect from light.", currentStabilityProfile: ref("stb-201-v3") },
+  { _id: "product-ilm-330", _type: "product", code: "ILM-330", name: "Vantrexa", inn: "mRNA-LNP suspension, 10-dose vial", dosageForm: "suspension for injection", labelStorage: "Frozen −25 to −15 °C. Thawed: 2–8 °C up to 30 days. Do not refreeze.", currentStabilityProfile: ref("stb-330-v1") },
+  { _id: "product-ilm-118", _type: "product", code: "ILM-118", name: "Orvane", inn: "orvanertinib 40 mg", dosageForm: "film-coated tablet, HDPE bottle", labelStorage: "Store at 15–25 °C.", currentStabilityProfile: ref("stb-118-v2") },
 ];
 
 const profiles: SeedDoc[] = [
-  { _id: "stb.201.v2", _type: "stabilityProfile", product: ref("product.ilm-201"), version: "v2", status: "superseded", effectiveDate: "2024-03-01", labelMinC: 2, labelMaxC: 8, excursionMaxC: 25, torBudgetHours: 24, mktLimitC: 25, studyRef: "ILM-201-STB-05", sourceDocument: ref("doc.STB-201-v2") },
-  { _id: "stb.201.v3", _type: "stabilityProfile", product: ref("product.ilm-201"), version: "v3", status: "effective", effectiveDate: "2026-05-15", supersedes: ref("stb.201.v2"), labelMinC: 2, labelMaxC: 8, excursionMaxC: 30, torBudgetHours: 48, mktLimitC: 25, heatOfActivationKJ: 83.144, studyRef: "ILM-201-STB-07", sourceDocument: ref("doc.STB-201-v3"), notes: "Change control CC-2026-031 open to propagate 48 h to downstream documents." },
-  { _id: "stb.330.v1", _type: "stabilityProfile", product: ref("product.ilm-330"), version: "v1", status: "effective", effectiveDate: "2025-09-01", labelMinC: 2, labelMaxC: 8, excursionMaxC: 25, torBudgetHours: 12, mktLimitC: 8, studyRef: "ILM-330-STB-02", sourceDocument: ref("doc.STB-330-v1"), notes: "Non-Arrhenius degradation; MKT offers no relief." },
-  { _id: "stb.118.v2", _type: "stabilityProfile", product: ref("product.ilm-118"), version: "v2", status: "effective", effectiveDate: "2025-04-20", labelMinC: 15, labelMaxC: 25, excursionMaxC: 40, torBudgetHours: 168, mktLimitC: 30, studyRef: "ILM-118-STB-03", sourceDocument: ref("doc.STB-118-v2") },
+  { _id: "stb-201-v2", _type: "stabilityProfile", product: ref("product-ilm-201"), version: "v2", status: "superseded", effectiveDate: "2024-03-01", labelMinC: 2, labelMaxC: 8, excursionMaxC: 25, torBudgetHours: 24, mktLimitC: 25, studyRef: "ILM-201-STB-05", sourceDocument: ref("doc-STB-201-v2") },
+  { _id: "stb-201-v3", _type: "stabilityProfile", product: ref("product-ilm-201"), version: "v3", status: "effective", effectiveDate: "2026-05-15", supersedes: ref("stb-201-v2"), labelMinC: 2, labelMaxC: 8, excursionMaxC: 30, torBudgetHours: 48, mktLimitC: 25, heatOfActivationKJ: 83.144, studyRef: "ILM-201-STB-07", sourceDocument: ref("doc-STB-201-v3"), notes: "Change control CC-2026-031 open to propagate 48 h to downstream documents." },
+  { _id: "stb-330-v1", _type: "stabilityProfile", product: ref("product-ilm-330"), version: "v1", status: "effective", effectiveDate: "2025-09-01", labelMinC: 2, labelMaxC: 8, excursionMaxC: 25, torBudgetHours: 12, mktLimitC: 8, studyRef: "ILM-330-STB-02", sourceDocument: ref("doc-STB-330-v1"), notes: "Non-Arrhenius degradation; MKT offers no relief." },
+  { _id: "stb-118-v2", _type: "stabilityProfile", product: ref("product-ilm-118"), version: "v2", status: "effective", effectiveDate: "2025-04-20", labelMinC: 15, labelMaxC: 25, excursionMaxC: 40, torBudgetHours: 168, mktLimitC: 30, studyRef: "ILM-118-STB-03", sourceDocument: ref("doc-STB-118-v2") },
 ];
 
 const packouts: SeedDoc[] = [
-  { _id: "packout.pk-48", _type: "packout", code: "PK-48", name: "Kestrel Passive 48 L", kind: "passive", manufacturer: "Frostwerk", payloadVolumeL: 48, currentQualification: ref("qual.pk48.2025-011"), packingInstruction: ref("doc.PI-PK48-v2") },
-  { _id: "packout.pk-a12", _type: "packout", code: "PK-A12", name: "ThermoVault A12 active container", kind: "active", manufacturer: "ThermoVault", payloadVolumeL: 1200, currentQualification: ref("qual.pka12.2024-002") },
+  { _id: "packout-pk-48", _type: "packout", code: "PK-48", name: "Kestrel Passive 48 L", kind: "passive", manufacturer: "Frostwerk", payloadVolumeL: 48, currentQualification: ref("qual-pk48-2025-011"), packingInstruction: ref("doc-PI-PK48-v2") },
+  { _id: "packout-pk-a12", _type: "packout", code: "PK-A12", name: "ThermoVault A12 active container", kind: "active", manufacturer: "ThermoVault", payloadVolumeL: 1200, currentQualification: ref("qual-pka12-2024-002") },
 ];
 
 const qualifications: SeedDoc[] = [
-  { _id: "qual.pk48.2025-011", _type: "packoutQualification", packout: ref("packout.pk-48"), reportId: "QR-PK48-2025-011", status: "effective", issuedDate: "2025-06-30", validUntil: "2027-06-30", ambientProfile: "ISTA 7E summer + Ilmenau FRA–BOS composite (4 h at 35 °C tarmac segment)", holdHoursSummer: 96, holdHoursWinter: 120, minPayloadFillPct: 60, preconditioningRequired: "48 h at 5 °C", sourceDocument: ref("doc.QR-PK48-2025-011"), notes: "Below 60 % fill the summer hold time is 72 h." },
-  { _id: "qual.pk48.2023-004", _type: "packoutQualification", packout: ref("packout.pk-48"), reportId: "QR-PK48-2023-004", status: "superseded", issuedDate: "2023-08-14", ambientProfile: "ISTA 7E summer (plain)", holdHoursSummer: 120, holdHoursWinter: 144, sourceDocument: ref("doc.QR-PK48-2023-004") },
-  { _id: "qual.pka12.2024-002", _type: "packoutQualification", packout: ref("packout.pk-a12"), reportId: "QR-PKA12-2024-002", status: "effective", issuedDate: "2024-11-05", validUntil: "2026-11-05", ambientProfile: "35 °C constant ambient (battery autonomy)", holdHoursSummer: 72, holdHoursWinter: 72, preconditioningRequired: "Charged to 100 %; plug in at ground stops > 6 h", sourceDocument: ref("doc.QR-PKA12-2024-002") },
+  { _id: "qual-pk48-2025-011", _type: "packoutQualification", packout: ref("packout-pk-48"), reportId: "QR-PK48-2025-011", status: "effective", issuedDate: "2025-06-30", validUntil: "2027-06-30", ambientProfile: "ISTA 7E summer + Ilmenau FRA–BOS composite (4 h at 35 °C tarmac segment)", holdHoursSummer: 96, holdHoursSummerLowFill: 72, holdHoursWinter: 120, minPayloadFillPct: 60, preconditioningRequired: "48 h at 5 °C", sourceDocument: ref("doc-QR-PK48-2025-011"), notes: "Below 60 % fill the summer hold time is 72 h." },
+  { _id: "qual-pk48-2023-004", _type: "packoutQualification", packout: ref("packout-pk-48"), reportId: "QR-PK48-2023-004", status: "superseded", issuedDate: "2023-08-14", ambientProfile: "ISTA 7E summer (plain)", holdHoursSummer: 120, holdHoursWinter: 144, sourceDocument: ref("doc-QR-PK48-2023-004") },
+  { _id: "qual-pka12-2024-002", _type: "packoutQualification", packout: ref("packout-pk-a12"), reportId: "QR-PKA12-2024-002", status: "effective", issuedDate: "2024-11-05", validUntil: "2026-11-05", ambientProfile: "35 °C constant ambient (battery autonomy)", holdHoursSummer: 72, holdHoursWinter: 72, preconditioningRequired: "Charged to 100 %; plug in at ground stops > 6 h", sourceDocument: ref("doc-QR-PKA12-2024-002") },
 ];
 
 const carriers: SeedDoc[] = [
-  { _id: "carrier.nordfracht", _type: "carrier", name: "Nordfracht Air Cargo", code: "NF", gdpCertified: true, maxTarmacHours: 8, termsDocument: ref("doc.NF-TC-2025") },
-  { _id: "carrier.skyline", _type: "carrier", name: "Skyline Pharma Logistics", code: "SKL", gdpCertified: true, maxTarmacHours: 6 },
-  { _id: "carrier.thuringia-road", _type: "carrier", name: "Thüringer Kühltransport GmbH", code: "TKT", gdpCertified: true, maxTarmacHours: 0 },
+  { _id: "carrier-nordfracht", _type: "carrier", name: "Nordfracht Air Cargo", code: "NF", gdpCertified: true, maxTarmacHours: 8, termsDocument: ref("doc-NF-TC-2025") },
+  { _id: "carrier-skyline", _type: "carrier", name: "Skyline Pharma Logistics", code: "SKL", gdpCertified: true, maxTarmacHours: 6 },
+  { _id: "carrier-thuringia-road", _type: "carrier", name: "Thüringer Kühltransport GmbH", code: "TKT", gdpCertified: true, maxTarmacHours: 0 },
 ];
 
 const lanes: SeedDoc[] = [
-  { _id: "lane.fra-bos", _type: "lane", code: "FRA-BOS", origin: "Frankfurt (FRA)", destination: "Boston (BOS)", mode: "air", carrier: ref("carrier.nordfracht"), plannedTransitHours: 52, approvedPackouts: [ref("packout.pk-48")], riskAssessment: ref("doc.LRA-FRA-BOS-v1"), seasonalNotes: "BOS ramp has no guaranteed cool ULD storage; summer tarmac dwell 2–5 h observed." },
-  { _id: "lane.lej-atl", _type: "lane", code: "LEJ-ATL", origin: "Leipzig (LEJ)", destination: "Atlanta (ATL)", mode: "air", carrier: ref("carrier.nordfracht"), plannedTransitHours: 48, approvedPackouts: [ref("packout.pk-48")], seasonalNotes: "ATL import warehouse is ambient; PharmaPlus cool room must be requested per booking." },
-  { _id: "lane.fra-sin", _type: "lane", code: "FRA-SIN", origin: "Frankfurt (FRA)", destination: "Singapore (SIN)", mode: "air", carrier: ref("carrier.skyline"), plannedTransitHours: 40, approvedPackouts: [ref("packout.pk-a12")], seasonalNotes: "Customs clearance at SIN can hold cargo 12–24 h; active container must be plugged in at the SATS cool chain facility." },
-  { _id: "lane.ilm-erf", _type: "lane", code: "ILM-ERF", origin: "Ilmenau plant", destination: "Erfurt distribution centre", mode: "road", carrier: ref("carrier.thuringia-road"), plannedTransitHours: 3, approvedPackouts: [], seasonalNotes: "Ambient-controlled truck; 2-hour loading window in summer can exceed 25 °C." },
+  { _id: "lane-fra-bos", _type: "lane", code: "FRA-BOS", origin: "Frankfurt (FRA)", destination: "Boston (BOS)", mode: "air", carrier: ref("carrier-nordfracht"), plannedTransitHours: 52, approvedPackouts: [refItem("packout-pk-48")], riskAssessment: ref("doc-LRA-FRA-BOS-v1"), seasonalNotes: "BOS ramp has no guaranteed cool ULD storage; summer tarmac dwell 2–5 h observed." },
+  { _id: "lane-lej-atl", _type: "lane", code: "LEJ-ATL", origin: "Leipzig (LEJ)", destination: "Atlanta (ATL)", mode: "air", carrier: ref("carrier-nordfracht"), plannedTransitHours: 48, approvedPackouts: [refItem("packout-pk-48")], seasonalNotes: "ATL import warehouse is ambient; PharmaPlus cool room must be requested per booking." },
+  { _id: "lane-fra-sin", _type: "lane", code: "FRA-SIN", origin: "Frankfurt (FRA)", destination: "Singapore (SIN)", mode: "air", carrier: ref("carrier-skyline"), plannedTransitHours: 40, approvedPackouts: [refItem("packout-pk-a12")], seasonalNotes: "Customs clearance at SIN can hold cargo 12–24 h; active container must be plugged in at the SATS cool chain facility." },
+  { _id: "lane-ilm-erf", _type: "lane", code: "ILM-ERF", origin: "Ilmenau plant", destination: "Erfurt distribution centre", mode: "road", carrier: ref("carrier-thuringia-road"), plannedTransitHours: 3, approvedPackouts: [], seasonalNotes: "Ambient-controlled truck; 2-hour loading window in summer can exceed 25 °C." },
 ];
 
 const shipments: SeedDoc[] = [
   {
-    _id: "shp.26-0911", _type: "shipment", shipmentId: "SHP-26-0911", product: ref("product.ilm-201"), lane: ref("lane.lej-atl"), packout: ref("packout.pk-48"),
+    _id: "shp-26-0911", _type: "shipment", shipmentId: "SHP-26-0911", product: ref("product-ilm-201"), lane: ref("lane-lej-atl"), packout: ref("packout-pk-48"),
     lotNumber: "K26-0417", units: 1200, payloadFillPct: 45, departedAt: "2026-09-10T06:00:00Z", arrivedAt: "2026-09-12T16:30:00Z", loggerId: "FW-LV-88213", status: "on-hold",
     alarmReason: "High-temperature alarm: 30.0 h above 8 °C, peak 14.2 °C (ATL import warehouse, cool room not booked).",
     readings: trace("2026-09-10T06:00:00Z", [{ hours: 4, tempC: 5.1 }, { hours: 30, tempC: 13.2, jitter: 1.0 }, { hours: 24.5, tempC: 5.4 }], 11),
   },
   {
-    _id: "shp.26-0874", _type: "shipment", shipmentId: "SHP-26-0874", product: ref("product.ilm-201"), lane: ref("lane.fra-bos"), packout: ref("packout.pk-48"),
+    _id: "shp-26-0874", _type: "shipment", shipmentId: "SHP-26-0874", product: ref("product-ilm-201"), lane: ref("lane-fra-bos"), packout: ref("packout-pk-48"),
     lotNumber: "K26-0402", units: 2400, payloadFillPct: 85, departedAt: "2026-09-04T08:00:00Z", arrivedAt: "2026-09-06T14:00:00Z", loggerId: "FW-LV-88104", status: "on-hold",
-    alarmReason: "High-temperature alarm: 5.0 h above 8 °C, peak 11.4 °C (BOS tarmac dwell).",
+    alarmReason: "High-temperature alarm: 5.0 h above 8 °C, peak 11.3 °C (BOS tarmac dwell).",
     readings: trace("2026-09-04T08:00:00Z", [{ hours: 40, tempC: 5.0 }, { hours: 5, tempC: 10.6, jitter: 0.8 }, { hours: 9, tempC: 5.2 }], 74),
   },
   {
-    _id: "shp.26-0902", _type: "shipment", shipmentId: "SHP-26-0902", product: ref("product.ilm-330"), lane: ref("lane.fra-sin"), packout: ref("packout.pk-a12"),
+    _id: "shp-26-0902", _type: "shipment", shipmentId: "SHP-26-0902", product: ref("product-ilm-330"), lane: ref("lane-fra-sin"), packout: ref("packout-pk-a12"),
     lotNumber: "V26-0093", units: 9000, payloadFillPct: 70, departedAt: "2026-09-07T10:00:00Z", arrivedAt: "2026-09-09T20:00:00Z", loggerId: "TV-A12-0417", status: "on-hold",
-    alarmReason: "Active container battery depleted during SIN customs hold; 20.0 h above 8 °C, peak 18.3 °C.",
+    alarmReason: "Active container battery depleted during SIN customs hold; 20.0 h above 8 °C, peak 18.2 °C.",
     readings: trace("2026-09-07T10:00:00Z", [{ hours: 36, tempC: 4.8 }, { hours: 6, tempC: 11.5, jitter: 1.2 }, { hours: 14, tempC: 16.8, jitter: 1.4 }, { hours: 2, tempC: 5.5 }], 2),
   },
   {
-    _id: "shp.26-0920", _type: "shipment", shipmentId: "SHP-26-0920", product: ref("product.ilm-118"), lane: ref("lane.ilm-erf"), packout: undefined,
+    _id: "shp-26-0920", _type: "shipment", shipmentId: "SHP-26-0920", product: ref("product-ilm-118"), lane: ref("lane-ilm-erf"), packout: undefined,
     lotNumber: "O26-0211", units: 6000, payloadFillPct: 100, departedAt: "2026-09-14T11:00:00Z", arrivedAt: "2026-09-14T15:00:00Z", loggerId: "FW-LV-90011", status: "on-hold",
-    alarmReason: "High-temperature alarm: 2.0 h above 25 °C, peak 27.6 °C (loading dock).",
+    alarmReason: "High-temperature alarm: 2.0 h above 25 °C, peak 26.9 °C (loading dock).",
     readings: trace("2026-09-14T11:00:00Z", [{ hours: 2, tempC: 26.9, jitter: 0.6 }, { hours: 2, tempC: 21.0 }], 20),
   },
 ];
 
 const deviations: SeedDoc[] = [
-  { _id: "dev.2026-0142", _type: "deviation", deviationId: "DEV-2026-0142", lane: ref("lane.fra-bos"), product: ref("product.ilm-201"), openedAt: "2026-06-02T09:00:00Z", classification: "minor", rootCause: "BOS tarmac dwell 3.5 h at 29 °C ambient; cool ULD not available", outcome: "Released on MKT per WI-LOG-007 (no QA deviation raised at the time; retrospectively logged)", capaId: undefined },
-  { _id: "dev.2026-0198", _type: "deviation", deviationId: "DEV-2026-0198", lane: ref("lane.fra-bos"), product: ref("product.ilm-201"), openedAt: "2026-07-19T14:00:00Z", classification: "major", rootCause: "BOS tarmac dwell 4.8 h; brick pre-conditioning log showed 34 h (< 48 h required)", outcome: "Released after QA review; CAPA raised for pre-conditioning verification", capaId: "CAPA-2026-041" },
+  { _id: "dev-2026-0142", _type: "deviation", deviationId: "DEV-2026-0142", lane: ref("lane-fra-bos"), product: ref("product-ilm-201"), openedAt: "2026-06-02T09:00:00Z", classification: "minor", rootCause: "BOS tarmac dwell 3.5 h at 29 °C ambient; cool ULD not available", outcome: "Released on MKT per WI-LOG-007 (no QA deviation raised at the time; retrospectively logged)", capaId: undefined },
+  { _id: "dev-2026-0198", _type: "deviation", deviationId: "DEV-2026-0198", lane: ref("lane-fra-bos"), product: ref("product-ilm-201"), openedAt: "2026-07-19T14:00:00Z", classification: "major", rootCause: "BOS tarmac dwell 4.8 h; brick pre-conditioning log showed 34 h (< 48 h required)", outcome: "Released after QA review; CAPA raised for pre-conditioning verification", capaId: "CAPA-2026-041" },
 ];
 
 export const seedDocuments: SeedDoc[] = [...docs, ...products, ...profiles, ...packouts, ...qualifications, ...carriers, ...lanes, ...shipments, ...deviations];

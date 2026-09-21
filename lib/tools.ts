@@ -14,7 +14,7 @@ const SHIPMENT_QUERY = /* groq */ `*[_type == "shipment" && shipmentId == $id][0
       _id, version, status, effectiveDate, labelMinC, labelMaxC, excursionMaxC, torBudgetHours, mktLimitC, heatOfActivationKJ, studyRef, notes,
       "sourceDocument": sourceDocument->{ docId, version, status, title }
     },
-    "otherProfiles": *[_type == "stabilityProfile" && product._ref == ^._id && status != "effective"]{ version, status, effectiveDate, excursionMaxC, torBudgetHours, mktLimitC, "sourceDocument": sourceDocument->docId }
+    "otherProfiles": *[_type == "stabilityProfile" && product._ref == ^._id && status != "effective"]{ version, status, effectiveDate, labelMinC, labelMaxC, excursionMaxC, torBudgetHours, mktLimitC, heatOfActivationKJ, "sourceDocument": sourceDocument->docId }
   },
   lane->{
     _id, code, origin, destination, mode, plannedTransitHours, seasonalNotes,
@@ -24,7 +24,7 @@ const SHIPMENT_QUERY = /* groq */ `*[_type == "shipment" && shipmentId == $id][0
   },
   packout->{
     code, name, kind,
-    "qualification": currentQualification->{ reportId, status, issuedDate, validUntil, ambientProfile, holdHoursSummer, holdHoursWinter, minPayloadFillPct, preconditioningRequired, notes },
+    "qualification": currentQualification->{ reportId, status, issuedDate, validUntil, ambientProfile, holdHoursSummer, holdHoursSummerLowFill, holdHoursWinter, minPayloadFillPct, preconditioningRequired, notes },
     "packingInstruction": packingInstruction->docId
   },
   "priorDeviations": *[_type == "deviation" && lane._ref == ^.lane._ref && product._ref == ^.product._ref && openedAt < ^.departedAt] | order(openedAt desc){
@@ -62,7 +62,7 @@ type ShipmentBundle = {
       notes?: string;
       sourceDocument?: { docId: string; version: string; status: string; title: string };
     };
-    otherProfiles: Array<{ version: string; status: string; effectiveDate?: string; excursionMaxC: number; torBudgetHours: number; mktLimitC: number; sourceDocument?: string }>;
+    otherProfiles: Array<{ version: string; status: string; effectiveDate?: string; labelMinC: number; labelMaxC: number; excursionMaxC: number; torBudgetHours: number; mktLimitC: number; heatOfActivationKJ?: number; sourceDocument?: string }>;
   };
   lane: {
     code: string;
@@ -79,7 +79,7 @@ type ShipmentBundle = {
     code: string;
     name: string;
     kind?: string;
-    qualification?: { reportId: string; status: string; issuedDate?: string; validUntil?: string; ambientProfile?: string; holdHoursSummer?: number; holdHoursWinter?: number; minPayloadFillPct?: number; preconditioningRequired?: string; notes?: string };
+    qualification?: { reportId: string; status: string; issuedDate?: string; validUntil?: string; ambientProfile?: string; holdHoursSummer?: number; holdHoursSummerLowFill?: number; holdHoursWinter?: number; minPayloadFillPct?: number; preconditioningRequired?: string; notes?: string };
     packingInstruction?: string;
   };
   priorDeviations: Array<{ deviationId: string; openedAt: string; classification?: string; rootCause?: string; outcome?: string; capaId?: string }>;
@@ -91,7 +91,13 @@ const monthsBetween = (a: string, b: string) => (new Date(b).getTime() - new Dat
 export async function assessShipment(shipmentId: string, source: ContentSource = contentSource()) {
   const s = await source.query<ShipmentBundle | null>(SHIPMENT_QUERY, { id: shipmentId });
   if (!s) throw new Error(`No shipment with shipmentId ${shipmentId}`);
+  if (!s.product) throw new Error(`Shipment ${shipmentId} has no product reference`);
+  if (!s.lane) throw new Error(`Shipment ${shipmentId} has no lane reference`);
   const p = s.product.profile;
+  if (!p) throw new Error(`Product ${s.product.code} has no effective stability profile (currentStabilityProfile is unset)`);
+  s.readings ??= [];
+  s.priorDeviations ??= [];
+  s.product.otherProfiles ??= [];
 
   // Only deviations within the SOP-QA-014 §6.3 look-back (12 months) count.
   const priorInWindow = s.priorDeviations.filter((d) => monthsBetween(d.openedAt, s.departedAt) <= 12);
@@ -115,7 +121,7 @@ export async function assessShipment(shipmentId: string, source: ContentSource =
     version: o.version,
     status: o.status,
     sourceDocument: o.sourceDocument,
-    disposition: assess(s.readings, { labelMinC: p.labelMinC, labelMaxC: p.labelMaxC, excursionMaxC: o.excursionMaxC, torBudgetHours: o.torBudgetHours, torPriorHours: 0, mktLimitC: o.mktLimitC }, priorInWindow.length).disposition,
+    disposition: assess(s.readings, { labelMinC: o.labelMinC ?? p.labelMinC, labelMaxC: o.labelMaxC ?? p.labelMaxC, excursionMaxC: o.excursionMaxC, torBudgetHours: o.torBudgetHours, torPriorHours: 0, mktLimitC: o.mktLimitC, heatOfActivationKJ: o.heatOfActivationKJ }, priorInWindow.length).disposition,
     torBudgetHours: o.torBudgetHours,
     excursionMaxC: o.excursionMaxC,
   }));
@@ -125,7 +131,13 @@ export async function assessShipment(shipmentId: string, source: ContentSource =
   const departMonth = new Date(s.departedAt).getUTCMonth() + 1;
   const season = departMonth >= 4 && departMonth <= 10 ? "summer" : "winter";
   const transitHours = s.arrivedAt ? hoursBetween(s.departedAt, s.arrivedAt) : undefined;
-  const qualifiedHold = q ? (season === "summer" ? q.holdHoursSummer : q.holdHoursWinter) : undefined;
+  // The qualified hold time depends on season and, when the report qualified a reduced figure, on fill.
+  const underFilled = q?.minPayloadFillPct !== undefined && s.payloadFillPct !== undefined && s.payloadFillPct < q.minPayloadFillPct;
+  const qualifiedHold = q
+    ? season === "summer"
+      ? underFilled && q.holdHoursSummerLowFill !== undefined ? q.holdHoursSummerLowFill : q.holdHoursSummer
+      : q.holdHoursWinter
+    : undefined;
   const packoutCheck = q
     ? {
         reportId: q.reportId,
@@ -134,6 +146,7 @@ export async function assessShipment(shipmentId: string, source: ContentSource =
         qualificationExpired: q.validUntil ? new Date(q.validUntil) < new Date(s.departedAt) : false,
         season,
         qualifiedHoldHours: qualifiedHold,
+        qualifiedHoldBasis: q ? (season === "summer" ? (underFilled && q.holdHoursSummerLowFill !== undefined ? `summer profile, reduced figure for fill below ${q.minPayloadFillPct} %` : underFilled ? `summer profile at full fill; the report qualified no figure for fill below ${q.minPayloadFillPct} %` : "summer profile") : "winter profile") : undefined,
         transitHours,
         transitWithinQualifiedHold: qualifiedHold !== undefined && transitHours !== undefined ? transitHours <= qualifiedHold : undefined,
         minPayloadFillPct: q.minPayloadFillPct,
@@ -188,7 +201,7 @@ export const listShipmentsTool = tool({
   description: "List shipments currently on hold with an open temperature alarm.",
   inputSchema: z.object({}),
   execute: async () =>
-    contentSource().query(/* groq */ `*[_type == "shipment"] | order(departedAt desc){
+    contentSource().query(/* groq */ `*[_type == "shipment" && status == "on-hold"] | order(departedAt desc){
       shipmentId, status, alarmReason, departedAt, "product": product->name, "productCode": product->code, "lane": lane->code, "packout": packout->code
     }`),
 });

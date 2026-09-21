@@ -17,6 +17,7 @@ Tool guidance
 - Always call assess_excursion first for the shipment in question.
 - If tools prefixed sanity_ are available, call sanity_initial_context once before any sanity_groq_query so you query real type and field names (every document type is listed there; controlled documents are the type controlledDocument, filtered by docId, docType, version and status). If read_document is available, it returns a controlled document's full Markdown body by docId (body is a string, not an array). Use sanity_groq_query for records and metadata (versions, statuses, dates, references), never for document bodies. Never call sanity_array_field_reader on controlledDocument.body: it is a Markdown string, not an array, and the call returns nothing. If tools prefixed kb_ are available, they are the only way to read prose: call kb_initial_context once, then kb_knowledge_base_read with the entry paths it lists for SOPs, stability summaries, qualification reports, lane assessments and regulatory digests. The Knowledge Base already carries resolved contradictions and their standing instructions, so report those resolutions when it surfaces them. Aim for one GROQ call and one or two Knowledge Base reads; do not re-fetch what you already have.
 - Then read the governing documents the tool names (the stability summary behind the profile, SOP-QA-014, SOP-QA-001, the packout qualification report, the lane risk assessment, the carrier terms, the USP <1079> digest) and any document those cite. Query by docId; check status and effectiveDate; follow supersedes chains.
+- Never write the memo from metadata alone. The contradictions live in document text (an appendix table, a clause in a work instruction, a figure in a lane assessment), so you must have read at least SOP-QA-014, SOP-QA-001, the governing stability summary and, where they exist, the lane risk assessment and the packout qualification report before you write. If those reads have not happened, do them now.
 - Keep queries narrow. Never pull shipment.readings through a content query; the assessment tool already processed the trace.
 
 Output: a disposition memo in Markdown. Use exactly these seven level-2 headings (## ...), in this order, with no preamble before the first heading and no other headings:
@@ -38,6 +39,7 @@ Three to five sentences a QA associate could paste into the eQMS.
 Style: precise, sober, no hedging filler. Cite documents as "SOP-QA-014 v4 (effective 2026-01-10) §6.3".`;
 
 const OMITTED = "[body omitted: read this document through kb_knowledge_base_read]";
+/** Replace every `body` string anywhere in a tool result, including inside JSON-encoded text blocks. */
 function stripBodies(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(stripBodies);
   if (v && typeof v === "object") {
@@ -45,10 +47,13 @@ function stripBodies(v: unknown): unknown {
     for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = k === "body" && typeof val === "string" ? OMITTED : stripBodies(val);
     return out;
   }
-  if (typeof v === "string" && v.length > 4000) return stripBodies(safeParse(v)) === v ? v : JSON.stringify(stripBodies(safeParse(v)));
+  if (typeof v === "string" && (v.startsWith("{") || v.startsWith("["))) {
+    let parsed: unknown;
+    try { parsed = JSON.parse(v); } catch { return v; }
+    return JSON.stringify(stripBodies(parsed));
+  }
   return v;
 }
-function safeParse(s: string): unknown { try { return JSON.parse(s); } catch { return s; } }
 function withoutBodies(t: Tool): Tool {
   const base = t as Tool & { execute?: (input: unknown, opts: unknown) => Promise<unknown> };
   return tool({
@@ -59,6 +64,7 @@ function withoutBodies(t: Tool): Tool {
 }
 
 export async function buildAgent() {
+  const llm = model(); // fail on missing credentials before opening any MCP connection
   let close = async () => {};
   let contentTools: ToolSet = {};
   let mode: "sanity-context" | "local" = "local";
@@ -80,7 +86,7 @@ export async function buildAgent() {
   }
   if (mode === "local") contentTools = { groq_query: localGroqTool, read_document: localReadDocumentTool };
   const agent = new ToolLoopAgent({
-    model: model(),
+    model: llm,
     instructions: INSTRUCTIONS,
     tools: { assess_excursion: assessExcursionTool, list_shipments: listShipmentsTool, ...contentTools },
     stopWhen: isStepCount(30),

@@ -47,6 +47,23 @@ describe("assess", () => {
     expect(a.mktExceeded).toBe(true);
     expect(a.disposition).toBe("INVESTIGATE");
   });
+  it("credits the final interval when the trace ends still out of range", () => {
+    // 2 h in range, then three readings at 15 °C an hour apart: 2 h between them plus the trailing hour.
+    const a = assess(readings([5, 5, 15, 15, 15], [0, 1, 2, 3, 4]), budget, 0);
+    expect(a.torOutHours).toBeCloseTo(3, 6);
+    const single = assess(readings([5, 5, 5, 15], [0, 1, 2, 3]), budget, 0);
+    expect(single.torOutHours).toBeCloseTo(1, 6);
+  });
+  it("never recommends release without readings", () => {
+    const a = assess([], budget, 0);
+    expect(a.disposition).toBe("INVESTIGATE");
+  });
+  it("a blown budget outranks the repeat-offender gate (the product itself is in question)", () => {
+    const a = assess(readings([5, 14, 14, 14, 5], [0, 1, 40, 80, 80]), budget, 2);
+    expect(a.budgetExceeded).toBe(true);
+    expect(a.disposition).toBe("REJECT/INVESTIGATE");
+    expect(a.dispositionRationale).toContain("CAPA");
+  });
   it("rejects on the hard ceiling regardless of budget", () => {
     const a = assess(readings([5, 35, 5], [0, 1, 2]), budget, 0);
     expect(a.hardLimitHit).toBe(true);

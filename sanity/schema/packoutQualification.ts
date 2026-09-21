@@ -13,6 +13,7 @@ export const packoutQualification = defineType({
     defineField({ name: "validUntil", type: "date" }),
     defineField({ name: "ambientProfile", title: "Ambient profile tested", type: "string", description: "e.g. ISTA 7E summer, 'Ilmenau lane profile FRA-BOS summer'" }),
     defineField({ name: "holdHoursSummer", title: "Qualified hold time, summer profile (h)", type: "number" }),
+    defineField({ name: "holdHoursSummerLowFill", title: "Qualified hold time, summer profile, below minimum fill (h)", type: "number", description: "Leave empty if the report qualified no reduced figure." }),
     defineField({ name: "holdHoursWinter", title: "Qualified hold time, winter profile (h)", type: "number" }),
     defineField({ name: "minPayloadFillPct", title: "Minimum payload fill (%) for the hold time to apply", type: "number" }),
     defineField({ name: "preconditioningRequired", type: "string" }),
