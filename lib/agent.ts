@@ -1,5 +1,5 @@
 import { ToolLoopAgent, isStepCount, tool, type Tool, type ToolSet } from "ai";
-import { model } from "./model";
+import { MODEL_SPEC, model } from "./model";
 import { sanityContextConfigured, sanityContextTools } from "./mcp";
 import { assessExcursionTool, listShipmentsTool, localGroqTool, localReadDocumentTool } from "./tools";
 
@@ -85,8 +85,12 @@ export async function buildAgent() {
     }
   }
   if (mode === "local") contentTools = { groq_query: localGroqTool, read_document: localReadDocumentTool };
+  // Through the AI Gateway, name a fallback model for capacity blips on the primary.
+  const fallback = process.env.DISPOSITION_MODEL_FALLBACK;
+  const providerOptions = MODEL_SPEC.startsWith("gateway/") && fallback ? { gateway: { models: [fallback] } } : undefined;
   const agent = new ToolLoopAgent({
     model: llm,
+    providerOptions,
     instructions: INSTRUCTIONS,
     tools: { assess_excursion: assessExcursionTool, list_shipments: listShipmentsTool, ...contentTools },
     stopWhen: isStepCount(30),

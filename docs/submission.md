@@ -64,7 +64,7 @@ On the repeat-excursion shipment it found four contradictions, cited the tie-bre
 
 ![The contradictions section of the memo for SHP-26-0874, each as claim A, claim B, which governs, and the consequence](https://raw.githubusercontent.com/iaj6/disposition-desk/main/docs/contradictions.jpg)
 
-**Stack.** Next.js on Vercel, with the Vercel AI SDK's `ToolLoopAgent` and `@ai-sdk/mcp` for the Sanity Context client. Embedded Studio at `/studio`. Claude Opus 5 through the AI Gateway on the live site, direct Anthropic or Gemini on Vertex locally. An offline mode runs the identical dataset through `groq-js`, so everything except the Knowledge Base build runs with no Sanity project at all (a model key is still required).
+**Stack.** Next.js on Vercel, with the Vercel AI SDK's `ToolLoopAgent` and `@ai-sdk/mcp` for the Sanity Context client. Embedded Studio at `/studio`. Claude Opus 4.8 through the Vercel AI Gateway on the live site (with Sonnet 5 as a fallback), direct Anthropic or Gemini on Vertex locally. An offline mode runs the identical dataset through `groq-js`, so everything except the Knowledge Base build runs with no Sanity project at all (a model key is still required).
 
 ## Sanity Project Details
 
