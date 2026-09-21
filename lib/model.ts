@@ -1,10 +1,12 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createVertex } from "@ai-sdk/google-vertex";
+import type { LanguageModel } from "ai";
 
 /**
  * DISPOSITION_MODEL selects provider and model:
- *   anthropic/claude-opus-5   (default)  — needs ANTHROPIC_API_KEY
- *   vertex/gemini-2.5-pro                — Google ADC; GOOGLE_VERTEX_PROJECT / GOOGLE_VERTEX_LOCATION
+ *   anthropic/claude-opus-5           (default)  — needs ANTHROPIC_API_KEY
+ *   gateway/anthropic/claude-opus-5              — Vercel AI Gateway; OIDC on Vercel, AI_GATEWAY_API_KEY elsewhere
+ *   vertex/gemini-2.5-pro                        — Google ADC; GOOGLE_VERTEX_PROJECT / GOOGLE_VERTEX_LOCATION
  */
 export const MODEL_SPEC = process.env.DISPOSITION_MODEL ?? "anthropic/claude-opus-5";
 
@@ -26,12 +28,17 @@ function vertexProvider() {
   return createVertex({ project, location: process.env.GOOGLE_VERTEX_LOCATION ?? "us-central1" });
 }
 
-export function model() {
+export function model(): LanguageModel {
   const [provider, ...rest] = MODEL_SPEC.split("/");
   const id = rest.join("/");
   switch (provider) {
     case "anthropic":
       return anthropicProvider()(id);
+    case "gateway":
+      // A plain "provider/model" string routes through Vercel AI Gateway.
+      if (!process.env.VERCEL && !process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN)
+        throw new ModelConfigError("gateway/* models need AI_GATEWAY_API_KEY (or a Vercel deployment / `vercel env pull` for OIDC).");
+      return id;
     case "vertex":
       return vertexProvider()(id);
     default:

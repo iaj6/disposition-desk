@@ -29,9 +29,11 @@ What a person does with it: pick a shipment from the work queue, read the memo, 
 
 ## Demo
 
+**Live:** https://disposition-desk.vercel.app — pick a shipment from the queue. Each run takes one to two minutes.
+
 ![Walkthrough of SHP-26-0874: the temperature trace, the tool calls into Sanity Context and the Knowledge Base, and the memo with its contradictions cited](https://raw.githubusercontent.com/iaj6/disposition-desk/main/docs/demo.gif)
 
-The two shipments to watch are SHP-26-0911 for the version conflict (same temperature log, opposite answer under the old profile) and SHP-26-0874 for the route that keeps failing (numbers pass, still escalated). Locally, `npm run ask -- "Assess shipment SHP-26-0874"` runs the full agent from the command line.
+Two shipments to try: SHP-26-0911 for the version conflict (same temperature log, opposite answer under the old profile) and SHP-26-0874 for the route that keeps failing (numbers pass, still escalated). Locally, `npm run ask -- "Assess shipment SHP-26-0874"` runs the full agent from the command line.
 
 ## Code
 
@@ -62,7 +64,7 @@ On the repeat-excursion shipment it found four contradictions, cited the tie-bre
 
 ![The contradictions section of the memo for SHP-26-0874, each as claim A, claim B, which governs, and the consequence](https://raw.githubusercontent.com/iaj6/disposition-desk/main/docs/contradictions.jpg)
 
-**Stack.** Next.js with the Vercel AI SDK's `ToolLoopAgent` and `@ai-sdk/mcp` for the Sanity Context client. Embedded Studio at `/studio`. Claude Opus 5 by default, Gemini on Vertex as an alternative. An offline mode runs the identical dataset through `groq-js`, so everything except the Knowledge Base build runs with no Sanity project at all (a model key is still required).
+**Stack.** Next.js on Vercel, with the Vercel AI SDK's `ToolLoopAgent` and `@ai-sdk/mcp` for the Sanity Context client. Embedded Studio at `/studio`. Claude Opus 5 through the AI Gateway on the live site, direct Anthropic or Gemini on Vertex locally. An offline mode runs the identical dataset through `groq-js`, so everything except the Knowledge Base build runs with no Sanity project at all (a model key is still required).
 
 ## Sanity Project Details
 

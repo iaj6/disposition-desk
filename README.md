@@ -2,6 +2,8 @@
 
 ![Walkthrough: pick a shipment, the desk computes the numbers, reads the Knowledge Base, and drafts the memo with every contradiction cited](docs/demo.gif)
 
+**Live:** https://disposition-desk.vercel.app · Studio: https://ilmenau-disposition.sanity.studio/
+
 A temperature-excursion disposition agent for a hypothetical pharma sponsor, **Ilmenau Therapeutics GmbH**, built for the [Sanity Challenge](https://dev.to/challenges/sanity-2026-09-16) (Path One: an agent that queries real content through Sanity Context MCP).
 
 When a shipment of a 2–8 °C biologic arrives with a temperature alarm, someone in QA has to decide: release, quarantine, or reject. The numbers (mean kinetic temperature, hours out of range, budget consumed) are easy. The hard part is knowing **which document governs**, because the quality binder disagrees with itself:
@@ -81,7 +83,7 @@ app/                    Next.js chat UI (/), API routes, embedded Studio (/studi
 scripts/                seed.ts, ask.ts (CLI), check.ts (no-model smoke test)
 ```
 
-Live instance: Studio at https://ilmenau-disposition.sanity.studio/, project `f5hwi6cp`, Knowledge Base "Ilmenau Quality System" (13 entries; the build surfaced three of the five planted contradictions as issues on its own: the 24 h/48 h budget, the 25 °C/30 °C ceiling and the 120 h/96 h hold time).
+Live instance: app at https://disposition-desk.vercel.app (Vercel, model through the AI Gateway with a monthly spend cap), Studio at https://ilmenau-disposition.sanity.studio/, project `f5hwi6cp`, Knowledge Base "Ilmenau Quality System" (13 entries; the build surfaced three of the five planted contradictions as issues on its own: the 24 h/48 h budget, the 25 °C/30 °C ceiling and the 120 h/96 h hold time).
 
 Everything about Ilmenau Therapeutics, its products, carriers and documents is invented.
 

@@ -1,0 +1,6 @@
+dist
+.sanity
+content/ilmenau.ndjson
+/docs
+.env*
+!.env.example
